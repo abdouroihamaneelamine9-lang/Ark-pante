@@ -1,10 +1,10 @@
 {
-  "name": "Ma Routine",
+  "name": "Routine quotidienne",
   "short_name": "Routine",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f4f4f4",
-  "theme_color": "#f4f4f4",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "icon-192.png",
