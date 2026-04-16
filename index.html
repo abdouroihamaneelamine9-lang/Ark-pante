@@ -167,6 +167,9 @@
 </div>
 
 <script>
+    if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
 
 const DEFAULT_NOTES = [
 "apprendre, lire, copier, écrire, parler, voir, comprendre, pratiquer, se préparer, faire des rappels, propreté, entreprendre, ...",
