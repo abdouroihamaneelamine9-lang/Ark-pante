@@ -1,256 +1,328 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <link rel="manifest" href="manifest.json">
-
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
-}
-</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
 <title>Routine quotidienne</title>
 
+<!-- PWA : manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Couleur de l'app -->
+<meta name="theme-color" content="#ffffff">
+
 <style>
-body { font-family: Arial; margin:0; background:#f4f4f4; }
-.container { max-width:900px; margin:auto; padding:20px; }
-.score { background:#fff; padding:10px; border-radius:8px; margin-bottom:10px; }
-.top-bar { display:flex; gap:10px; margin-bottom:10px; }
-.btn { padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#f7f7f7; cursor:pointer; }
-.card { background:#fff; padding:15px; border-radius:10px; margin-bottom:15px; }
-.time { display:flex; justify-content:space-between; margin-bottom:10px; gap:10px; }
-.emoji-inline { display:flex; gap:4px; }
-.status-row { display:flex; gap:10px; margin-bottom:10px; }
-.status-box { flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; display:flex; justify-content:space-between; }
-.notes { margin-top:10px; }
-.note-item { display:flex; justify-content:space-between; background:#fafafa; padding:6px; margin-bottom:5px; border-radius:6px; }
-.note-input { display:flex; gap:5px; margin-top:8px; }
-.time-edit-input { border:1px solid #ddd; padding:4px; border-radius:6px; }
-.time-actions { display:flex; gap:5px; }
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f4f4f4;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+    }
+
+    .score {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 8px;
+    }
+
+    .title {
+        text-align: center;
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .btn {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #f7f7f7;
+    }
+
+    .card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .time {
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        gap: 10px;
+    }
+
+    .status-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .status-box {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .notes {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+    }
+
+    .note-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px;
+        margin-bottom: 5px;
+        background: #fafafa;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .note-input {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .note-input input {
+        flex: 1;
+        padding: 6px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+    }
+
+    .note-input button {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        background: #eee;
+        border-radius: 6px;
+        cursor: pointer;
+    }
 </style>
 </head>
 
 <body>
 
 <div class="container">
-<div id="score" class="score"></div>
 
-<div class="top-bar">
-<button class="btn" onclick="resetWeekEmojis()">Effacer emoji</button>
-<button class="btn" onclick="resetAll()">Réinitialiser tout</button>
-</div>
+    <div class="title">Responsabilité</div>
 
-<div id="blocks"></div>
+    <div id="score" class="score"></div>
+
+    <div class="top-bar">
+        <button class="btn" onclick="resetWeekEmojis()">Effacer emoji</button>
+        <button class="btn" onclick="resetAll()">Réinitialiser tout</button>
+    </div>
+
+    <div id="blocks"></div>
 </div>
 
 <script>
+/* ========= PWA SERVICE WORKER ========= */
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
 
-let TIME_EDITING = false;
+/* ========= DONNÉES ========= */
 
 const DEFAULT_NOTES = [
-"apprendre, lire, copier...",
-"lire le coran...",
+"apprendre, lire, écrire, pratiquer",
+"lire le coran, écouter le coran",
 "faire correctement les choses"
 ];
 
 const BLOCKS = [
-"05:00–09:00","09:00–13:00","13:00–15:40",
-"15:40–18:20","18:20–19:50","19:50–23:00","23:00–05:00"
+"05:00–09:00",
+"09:00–13:00",
+"13:00–15:40",
+"15:40–18:20",
+"18:20–19:50",
+"19:50–23:00",
+"23:00–05:00"
 ];
 
-const STATE_KEY="routine_state";
-const EMOJI_KEY="routine_emojis";
-const SCORE_KEY="routine_score";
-const NOTES_KEY="routine_notes";
+const STATE_KEY = "routine_state";
+const EMOJI_KEY = "routine_emojis";
+const SCORE_KEY = "routine_score";
+const NOTES_KEY = "routine_notes";
 
-function load(k,f){return JSON.parse(localStorage.getItem(k)||JSON.stringify(f));}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+/* ========= LOCAL STORAGE ========= */
 
-function getScore(){return load(SCORE_KEY,{fort:0,faible:0});}
-function updateScore(t){const s=getScore();s[t]++;save(SCORE_KEY,s);}
-
-function addEmoji(b,e){
-const em=load(EMOJI_KEY,{});
-if(!em[b]) em[b]=[];
-em[b].push(e);
-save(EMOJI_KEY,em);
+function load(key, fallback){
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
 }
 
-function getNotes(block){
-const notes=load(NOTES_KEY,{});
-if(!notes[block]){
-notes[block]= block==="23:00–05:00"
-? ["Dormir correctement."]
-: [...DEFAULT_NOTES];
-save(NOTES_KEY,notes);
-}
-return notes[block];
+function save(key, value){
+    localStorage.setItem(key, JSON.stringify(value));
 }
 
-function addNote(b,t){
-const n=load(NOTES_KEY,{});
-if(!n[b]) n[b]=[...DEFAULT_NOTES];
-n[b].push(t);
-save(NOTES_KEY,n);
+/* ========= SCORE ========= */
+
+function getScore(){
+    return load(SCORE_KEY,{fort:0,faible:0});
 }
 
-function deleteNote(b,i){
-const n=load(NOTES_KEY,{});
-if(!n[b]) return;
-n[b].splice(i,1);
-save(NOTES_KEY,n);
-
-if(!TIME_EDITING) render();
+function updateScore(type){
+    const s = getScore();
+    s[type]++;
+    save(SCORE_KEY,s);
 }
 
-function setStatus(b,v){
-const s=load(STATE_KEY,{});
-s[b]=v;
-updateScore(v==="Fort"?"fort":"faible");
-addEmoji(b,v==="Fort"?"✅":"❌");
-save(STATE_KEY,s);
+/* ========= EMOJI ========= */
 
-if(!TIME_EDITING) render();
+function addEmoji(block, emoji){
+    const e = load(EMOJI_KEY,{});
+    if(!e[block]) e[block]=[];
+    e[block].push(emoji);
+    save(EMOJI_KEY,e);
 }
 
-function resetWeekEmojis(){localStorage.removeItem(EMOJI_KEY);render();}
-function resetAll(){localStorage.clear();render();}
+/* ========= STATUS ========= */
 
-/* ===== HORAIRES PATCH ===== */
+function setStatus(block,value){
+    const state = load(STATE_KEY,{});
+    state[block]=value;
 
-function getActiveBlocks(){
-return load("routine_blocks_custom",null)||BLOCKS;
+    if(value==="Fort") updateScore("fort");
+    else updateScore("faible");
+
+    addEmoji(block,value==="Fort"?"✅":"❌");
+
+    save(STATE_KEY,state);
+    render();
 }
 
-function saveBlocks(b){save("routine_blocks_custom",b);}
+/* ========= RESET ========= */
 
-function enableTimeEdit(span,index){
-TIME_EDITING=true;
-
-const old=span.innerText;
-const parent=span.parentNode;
-
-const input=document.createElement("input");
-input.value=old;
-input.className="time-edit-input";
-
-const actions=document.createElement("div");
-actions.className="time-actions";
-
-const ok=document.createElement("button");
-ok.innerText="Valider";
-
-const cancel=document.createElement("button");
-cancel.innerText="Annuler";
-
-ok.onclick=()=>{
-const blocks=getActiveBlocks();
-blocks[index]=input.value;
-saveBlocks(blocks);
-
-TIME_EDITING=false;
-render();
-};
-
-cancel.onclick=()=>{
-input.remove();
-actions.remove();
-span.style.display="";
-TIME_EDITING=false;
-};
-
-actions.appendChild(ok);
-actions.appendChild(cancel);
-
-span.style.display="none";
-parent.insertBefore(input, span.nextSibling);
-parent.insertBefore(actions, input.nextSibling);
+function resetWeekEmojis(){
+    localStorage.removeItem(EMOJI_KEY);
+    render();
 }
 
-/* Listener corrigé */
-document.addEventListener("dblclick", (e) => {
-const target = e.target;
+function resetAll(){
+    localStorage.clear();
+    render();
+}
 
-if (!target.matches('[data-editable="time"]')) return;
-if (target.closest(".notes") || target.closest(".note-input")) return;
+/* ========= NOTES ========= */
 
-enableTimeEdit(target, parseInt(target.dataset.index));
-});
+function getNotes(blockIndex){
+    const notes = load(NOTES_KEY,{});
 
-/* ===== RENDER ===== */
+    if(!notes[blockIndex]){
+        notes[blockIndex] = [...DEFAULT_NOTES];
+        save(NOTES_KEY, notes);
+    }
+
+    return notes[blockIndex];
+}
+
+function addNoteUI(blockIndex){
+    const input = document.getElementById("input-"+blockIndex);
+    const v = input.value.trim();
+    if(!v) return;
+
+    const notes = load(NOTES_KEY,{});
+    if(!notes[blockIndex]) notes[blockIndex]=[];
+
+    notes[blockIndex].push(v);
+    save(NOTES_KEY,notes);
+
+    render();
+}
+
+function deleteNote(btn){
+    const item = btn.closest(".note-item");
+
+    const blockIndex = parseInt(item.dataset.blockIndex);
+    const noteIndex = parseInt(item.dataset.noteIndex);
+
+    const notes = load(NOTES_KEY,{});
+
+    notes[blockIndex].splice(noteIndex,1);
+    save(NOTES_KEY,notes);
+
+    render();
+}
+
+/* ========= RENDER ========= */
 
 function render(){
-const container=document.getElementById("blocks");
-const score=getScore();
-const emojis=load(EMOJI_KEY,{});
-const blocks=getActiveBlocks();
+    const container = document.getElementById("blocks");
+    const score = getScore();
+    const emojis = load(EMOJI_KEY,{});
 
-container.innerHTML="";
+    container.innerHTML = "";
 
-blocks.forEach((block,i)=>{
-const notes=getNotes(block);
-const history=emojis[block]||[];
+    BLOCKS.forEach((block,index)=>{
 
-const card=document.createElement("div");
-card.className="card";
+        const notes = getNotes(index);
+        const history = emojis[block] || [];
 
-card.innerHTML=`
-<div class="time">
-<span data-editable="time" data-index="${i}">${block}</span>
-<span class="emoji-inline">
-${history.map(e=>`<span>${e}</span>`).join("")}
-</span>
-</div>
+        const card = document.createElement("div");
+        card.className = "card";
 
-<div class="status-row">
-<div class="status-box">
-<span>Fort</span>
-<input type="checkbox" onchange="setStatus('${block}','Fort')">
-</div>
-<div class="status-box">
-<span>Faible</span>
-<input type="checkbox" onchange="setStatus('${block}','Faible')">
-</div>
-</div>
+        card.innerHTML = `
+            <div class="time">
+                <span>${block}</span>
+                <span>${history.join(" ")}</span>
+            </div>
 
-<div class="notes">
-${notes.map((n,i)=>`
-<div class="note-item">
-<span>${n}</span>
-<button onclick="deleteNote('${block}',${i})">note${i+1}</button>
-</div>`).join("")}
+            <div class="status-row">
+                <div class="status-box">
+                    <span>Fort</span>
+                    <input type="checkbox" onchange="setStatus('${block}','Fort')">
+                </div>
 
-<div class="note-input">
-<input id="input-${block}">
-<button onclick="addNoteUI('${block}')">Ajouter</button>
-</div>
-</div>
-`;
+                <div class="status-box">
+                    <span>Faible</span>
+                    <input type="checkbox" onchange="setStatus('${block}','Faible')">
+                </div>
+            </div>
 
-container.appendChild(card);
-});
+            <div class="notes">
+                ${notes.map((n,i)=>`
+                    <div class="note-item" data-block-index="${index}" data-note-index="${i}">
+                        <span>${n}</span>
+                        <button onclick="deleteNote(this)">X</button>
+                    </div>
+                `).join("")}
 
-document.getElementById("score").innerHTML=`
-<div>✅ Fort</div>
-<div>❌ Faible</div>
-<div>🏆 Score : ✅ ${score.fort} - ❌ ${score.faible}</div>
-`;
-}
+                <div class="note-input">
+                    <input id="input-${index}" type="text">
+                    <button onclick="addNoteUI(${index})">Ajouter</button>
+                </div>
+            </div>
+        `;
 
-function addNoteUI(b){
-const input=document.getElementById("input-"+b);
-const v=input.value.trim();
-if(!v) return;
+        container.appendChild(card);
+    });
 
-addNote(b,v);
-input.value="";
-
-if(!TIME_EDITING) render();
+    document.getElementById("score").innerHTML =
+        `🏆 Score : ✅ ${score.fort} - ❌ ${score.faible}`;
 }
 
 render();
-
 </script>
+
 </body>
 </html>
